@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>eCommerce Admin Panel</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    input, button { padding: 8px; margin-right: 5px; }
+    ul { list-style: none; padding-left: 0; }
+    li { cursor: pointer; margin: 5px 0; }
+    li:hover { background-color: #f0f0f0; }
+    .section { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>eCommerce Admin Panel</h1>
+
+  <div class="section">
+    <input id="searchInput" type="text" placeholder="Search users by name or email" />
+    <button id="searchBtn">Search</button>
+  </div>
+
+  <div class="section">
+    <h2>Users</h2>
+    <ul id="usersList"></ul>
+  </div>
+
+  <div class="section">
+    <h2>Orders</h2>
+    <ul id="ordersList"></ul>
+  </div>
+
+  <div class="section">
+    <h2>Order Items</h2>
+    <ul id="itemsList"></ul>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const usersList = document.getElementById('usersList');
+    const ordersList = document.getElementById('ordersList');
+    const itemsList = document.getElementById('itemsList');
+
+    let selectedUserId = null;
+    let selectedOrderId = null;
+
+    searchBtn.addEventListener('click', async () => {
+      const search = searchInput.value.trim();
+      if (!search) return alert('Please enter a search term');
+
+      // Clear previous data
+      usersList.innerHTML = '';
+      ordersList.innerHTML = '';
+      itemsList.innerHTML = '';
+      selectedUserId = null;
+      selectedOrderId = null;
+
+      try {
+        const res = await fetch(`http://localhost:5500/api/users?search=${encodeURIComponent(search)}`);
+        if (!res.ok) throw new Error('Failed to fetch users');
+        const users = await res.json();
+
+        if (users.length === 0) {
+          usersList.innerHTML = '<li>No users found</li>';
+          return;
+        }
+
+        users.forEach(user => {
+          const li = document.createElement('li');
+          li.textContent = `${user.first_name} ${user.last_name} (${user.email})`;
+          li.addEventListener('click', () => {
+            selectUser(user);
+          });
+          usersList.appendChild(li);
+        });
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    async function selectUser(user) {
+      selectedUserId = user.id;
+      ordersList.innerHTML = '';
+      itemsList.innerHTML = '';
+      selectedOrderId = null;
+
+      try {
+        const res = await fetch(`http://localhost:5500/api/users/${selectedUserId}/orders`);
+        if (!res.ok) throw new Error('Failed to fetch orders');
+        const orders = await res.json();
+
+        if (orders.length === 0) {
+          ordersList.innerHTML = '<li>No orders found for this user</li>';
+          return;
+        }
+
+        orders.forEach(order => {
+          const li = document.createElement('li');
+          li.textContent = `Order #${order.order_id} - Status: ${order.status}`;
+          li.addEventListener('click', () => {
+            selectOrder(order);
+          });
+          ordersList.appendChild(li);
+        });
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    async function selectOrder(order) {
+      selectedOrderId = order.order_id;
+      itemsList.innerHTML = '';
+
+      try {
+        const res = await fetch(`http://localhost:5500/api/orders/${selectedOrderId}/items`);
+        if (!res.ok) throw new Error('Failed to fetch order items');
+        const items = await res.json();
+
+        if (items.length === 0) {
+          itemsList.innerHTML = '<li>No items found for this order</li>';
+          return;
+        }
+
+        items.forEach(item => {
+          const li = document.createElement('li');
+          li.textContent = `Product ID: ${item.product_id} — Status: ${item.status}`;
+          itemsList.appendChild(li);
+        });
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+  </script>
+</body>
+</html>
